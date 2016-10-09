@@ -1,6 +1,6 @@
 function factorList = constructGeneticNetwork(pedigree, alleleFreqs, alphaList)
 % This function constructs a Bayesian network for genetic inheritance.  It
-% assumes that there are only 2 phenotypes.  It also assumes that either 
+% assumes that there are only 2 phenotypes.  It also assumes that either
 % both parents are specified or neither parent is specified.
 %
 % In Matlab, each variable will have a number.  We need a consistent way of
@@ -40,7 +40,7 @@ function factorList = constructGeneticNetwork(pedigree, alleleFreqs, alphaList)
 %   relationships
 %   alleleFreqs: Frequencies of alleles in the population
 %   alphaList: m x 1 vector of alpha values for genotypes, where m is the
-%   number of genotypes -- the alpha value for a genotype is the 
+%   number of genotypes -- the alpha value for a genotype is the
 %   probability that a person with that genotype will have the
 %   physical trait
 %
@@ -51,19 +51,42 @@ function factorList = constructGeneticNetwork(pedigree, alleleFreqs, alphaList)
 numPeople = length(pedigree.names);
 
 % Initialize factors
-% The number of factors is twice the number of people because there is a 
-% factor for each person's genotype and a separate factor for each person's 
+% The number of factors is twice the number of people because there is a
+% factor for each person's genotype and a separate factor for each person's
 % phenotype.  Note that the order of the factors in the list does not
 % matter.
 factorList(2*numPeople) = struct('var', [], 'card', [], 'val', []);
 
 numAlleles = length(alleleFreqs); % Number of alleles
-
+a = pedigree.parents(:,1);
+bookkeeping = ones(1,numPeople);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %INSERT YOUR CODE HERE
 % Variable numbers:
 % 1 - numPeople: genotype variables
 % numPeople+1 - 2*numPeople: phenotype variables
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+for i=1:numPeople
+        if a(i) == 0
+                factorList(i) = genotypeGivenAlleleFreqsFactor(alleleFreqs,i);
+                bookkeeping(i) = 0;
+        end
+end
+while sum(bookkeeping)!=0
+        for i=1:numPeople
+                if bookkeeping(i)==1
+                        parents = pedigree.parents(i,:);
+                        bb = bookkeeping(parents(2));
+                        aa = bookkeeping(parents(1));
+                        if aa==0 && bb==0
+                                factorList(i) = genotypeGivenParentsGenotypesFactor(numAlleles,i,parents(1),parents(2));
+                                bookkeeping(i) = 0;
+                        end
+                end
+        end
+end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+for i = 1:numPeople
+        factorList(numPeople+i) = phenotypeGivenGenotypeFactor(alphaList,i,numPeople+i);
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

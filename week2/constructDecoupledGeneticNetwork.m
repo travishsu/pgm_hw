@@ -52,8 +52,8 @@ function factorList = constructDecoupledGeneticNetwork(pedigree, alleleFreqs, al
 %   alleleFreqs: n x 1 vector of allele frequencies in the population,
 %   where n is the number of alleles
 %   alphaList: m x 1 vector of alphas for different genotypes, where m is
-%   the number of genotypes -- the alpha value for a genotype is the 
-%   probability that a person with that genotype will have the physical 
+%   the number of genotypes -- the alpha value for a genotype is the
+%   probability that a person with that genotype will have the physical
 %   trait
 %
 % Output:
@@ -63,9 +63,9 @@ function factorList = constructDecoupledGeneticNetwork(pedigree, alleleFreqs, al
 numPeople = length(pedigree.names);
 
 % Initialize factors
-% We Need 3*numPeople factors because, for each person, there is a factor 
-% for the CPD at each of 2 parental copies of the gene and a factor for the 
-% CPD at the phenotype Note that the order of the factors in the list does 
+% We Need 3*numPeople factors because, for each person, there is a factor
+% for the CPD at each of 2 parental copies of the gene and a factor for the
+% CPD at the phenotype Note that the order of the factors in the list does
 % not matter.
 factorList(3*numPeople) = struct('var', [], 'card', [], 'val', []);
 
@@ -73,13 +73,37 @@ factorList(3*numPeople) = struct('var', [], 'card', [], 'val', []);
 factorList(3*numPeople) = struct('var', [], 'card', [], 'val', []);
 
 numAlleles = length(alleleFreqs); % Number of alleles
-
+a = pedigree.parents(:,1);
+bookkeeping = ones(1,numPeople);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % INSERT YOUR CODE HERE
 % Variable numbers:
 % 1 - numPeople: first parent copy of gene variables
 % numPeople+1 - 2*numPeople: second parent copy of gene variables
 % 2*numPeople+1 - 3*numPeople: phenotype variables
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+for i=1:numPeople
+        if a(i) == 0
+                factorList(i) = childCopyGivenFreqsFactor(alleleFreqs,i);
+                factorList(numPeople+i) = childCopyGivenFreqsFactor(alleleFreqs,numPeople+i);
+                bookkeeping(i) = 0;
+        end
+end
+while sum(bookkeeping)!=0
+    for i=1:numPeople
+        if bookkeeping(i)==1
+            parents = pedigree.parents(i,:);
+            bb = bookkeeping(parents(2));
+            aa = bookkeeping(parents(1));
+            if aa==0 && bb==0
+                factorList(i) = childCopyGivenParentalsFactor(numAlleles,i,parents(1),numPeople+parents(1));
+                factorList(numPeople+i) = childCopyGivenParentalsFactor(numAlleles,numPeople+i,parents(2),numPeople+parents(2));
+                bookkeeping(i) = 0;
+            end
+        end
+    end
+end
+for i = 1:numPeople
+    factorList(2*numPeople+i) = phenotypeGivenCopiesFactor(alphaList,numAlleles,i,numPeople+i,2*numPeople+i);
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
